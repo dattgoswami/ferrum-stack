@@ -1,6 +1,5 @@
 # Ferrum Platform
-Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and LLMOps.
-> forge-agent runs overnight, implements tasks from TASKS.md using TDD, stores every episode in ferrum-memory, and measurably improves on new tasks via experience replay — provably, with BWT/FWT numbers in DuckDB.
+A composable autonomous software engineering platform where coding agents act, remember, coordinate, and measure improvement across sessions.
 ---
 
 ## Projects
@@ -24,7 +23,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 
 ---
 
-## Minimum Viable Self-Improving Agent
+## Critical Path — Minimum Viable Self-Improving Agent
 
 ```
                       TASKS.md  /  operator  /  external trigger
@@ -64,8 +63,8 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
  ||                 ||  ||                        ||  ||                  ||
  ||  ferrum-mcp     ||  ||  ferrum-memory         ||  ||  ferrum-evals    ||
  ||  Rust MCP       ||  ||  Python/FastAPI         ||  ||  Python/pytest   ||
- ||  server         ||  ||  + Qdrant :6333        ||  ||  + DuckDB        ||
- ||                 ||  ||  + DuckDB              ||  ||                  ||
+ ||  server         ||  ||  + Qdrant :6333        ||  ||  + SQLite        ||
+ ||                 ||  ||  + SQLite              ||  ||                  ||
  ||  coding/* (WIP) ||  ||  + Redis  :6379        ||  ||  Operational:    ||
  ||   read_file     ||  ||                        ||  ||  -- ToolCorrect. ||
  ||   write_file    ||  ||  POST /experience       ||  ||  -- Trajectory   ||
@@ -82,7 +81,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
  ||   price         ||  ||                        ||  ||                  ||
  ||   position      ||  ||  data stores:          ||  ||  Without this,   ||
  ||                 ||  ||  Qdrant  (vectors)      ||  ||  "self-improving"||
- ||  defi/*   (ok)  ||  ||  DuckDB  (episodes)    ||  ||  is a claim,     ||
+ ||  defi/*   (ok)  ||  ||  SQLite  (episodes)    ||  ||  is a claim,     ||
  ||   yield         ||  ||  Redis   (sessions)    ||  ||  not a           ||
  ||   risk_score    ||  ||                        ||  ||  measurement     ||
  ||_________________||  ||________________________||  ||__________________||
@@ -94,7 +93,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||  LAYER 0 -- Infrastructure (built, published to crates.io v1.0.0)        ||
 ||                                                                            ||
 ||  axon          Rust    local inference (HuggingFace Candle)               ||
-||                        OpenAI-compat API :8080                            ||
+||                        axon-native /v1/generate API  :3000               ||
 ||                        80% of forge-agent LLM calls routed here           ||
 ||                        three-tier fallback: GPU --> CPU --> stub          ||
 ||                        TurboQuant KV cache compression 7x (ICLR 2026)    ||
@@ -157,7 +156,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||    typed MCP tool boundary -- the action space for all agents             ||
 ||    transport: stdio (primary, Claude Desktop) + SSE / HTTP :3000         ||
 ||                                                                            ||
-||    coding domain  (forge-agent's hands):                                 ||
+||    coding domain  (WIP -- not yet documented in project README):         ||
 ||      read_file   write_file   apply_patch   grep   glob                  ||
 ||      list_dir    write_test   run_tests     git_commit   git_status       ||
 ||                                                                            ||
@@ -174,6 +173,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||    human preference, versioned prompt assets, episodic interaction mem   ||
 ||    persona injection for the ferrum-agent planner node                   ||
 ||    approves prompt material before agents see it                         ||
+||    stores: PostgreSQL + Qdrant                                            ||
 ||    :8001  (Sprint 2)                                                     ||
 ||____________________________________________________________________________||
                ||
@@ -191,7 +191,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||      GET  /replay        -- surface salient past episodes                ||
 ||      POST /memory/*      -- store / search semantic memory               ||
 ||      POST /session/*     -- open / close working memory window           ||
-||    stores: Qdrant (vectors)  DuckDB (episodes)  Redis (session state)   ||
+||    stores: Qdrant (vectors)  SQLite (episodes)  Redis (session state)   ||
 ||    :8000                                                                  ||
 ||                                                                            ||
 ||  ferrum-evals     Python                                                  ||
@@ -199,7 +199,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||    operational: ToolCorrectnessMetric  TrajectoryScore  GuardrailCheck   ||
 ||    CL research: BWT (backward transfer)  FWT (forward transfer)          ||
 ||                 Plasticity Index         Reward curve slope              ||
-||    DuckDB schema: task_performance table, queryable dataset              ||
+||    SQLite schema: task_performance table, queryable dataset              ||
 ||    :8002                                                                  ||
 ||                                                                            ||
 ||  PersonalKB       Python                                                  ||
@@ -209,7 +209,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||                                                                            ||
 ||  data stores:                                                             ||
 ||    Qdrant   :6333   -- vector store (memories, episodes, KB embeddings)  ||
-||    DuckDB           -- experience log, CL research dataset, eval tables  ||
+||    SQLite           -- episode records, eval scores, task_performance    ||
 ||    Redis    :6379   -- ephemeral session state, agent queues / pubsub    ||
 ||    SQLite           -- PersonalKB local index                            ||
 ||____________________________________________________________________________||
@@ -227,7 +227,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||    three-tier fallback engine: GPU --> CPU --> deterministic stub        ||
 ||    TurboQuant KV cache compression 7x lossless at 4-bit (ICLR 2026)    ||
 ||    context window: ~2,000 tokens stock --> ~14,000 with TurboQuant      ||
-||    OpenAI-compat API  :8080                                              ||
+||    axon-native /v1/generate API  :3000  (not yet OpenAI-compatible)     ||
 ||                                                                            ||
 ||  ferrum-relay      Rust                                                   ||
 ||    lightweight async HTTP relay for fetch and compute offload            ||
@@ -283,7 +283,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||      ferrum-mcp/coding/glob        --> list all repo files                ||
 ||      ferrum-mcp/coding/grep        --> find relevant symbols              ||
 ||      ferrum-mcp/coding/read_file   --> read key source files              ||
-||      axon (local model :8080)      --> summarize context cheaply         ||
+||      axon (local model)            --> summarize context cheaply         ||
 ||      ||                                                                    ||
 ||      V                                                                     ||
 ||  3.  Write failing test  (TDD first)                                       ||
@@ -323,7 +323,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
 ||      V                                                                     ||
 ||  9.  Research data pipeline                                                ||
 ||      ferrum-evals:    compute BWT / FWT over all accumulated episodes    ||
-||      DuckDB:          append episode row to task_performance table        ||
+||      SQLite:          append episode row to task_performance table         ||
 ||      cl-experiments:  queryable dataset --> arXiv preprint target         ||
 ||____________________________________________________________________________||
 ```
@@ -336,7 +336,7 @@ Agent infrastructure for memory, evals, MCP tools, tracing, orchestration, and L
  ______________________________________________________________________________
 ||  Service            Port    Protocol              Consumed by             ||
 ||____________________________________________________________________________||
-||  axon               8080    HTTP OpenAI-compat     forge-agent (80% LLM)  ||
+||  axon               3000    HTTP /v1/generate      forge-agent (80% LLM)  ||
 ||  ferrum-memory      8000    REST/JSON + FastAPI    forge-agent             ||
 ||                                                    ferrum-agent            ||
 ||                                                    ferrum-evals            ||
