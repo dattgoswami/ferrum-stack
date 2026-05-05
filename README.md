@@ -9,7 +9,7 @@ A composable autonomous software engineering platform where coding agents act, r
 | 4 | [forge-agent](https://github.com/dattgoswami/forge-agent) | Python | Continual-learning coding agent — executes tasks via TDD, learns from outcomes, improves across runs. |
 | 4 | [ferrum-agent](https://github.com/dattgoswami/ferrum-agent) | Python | Multi-agent orchestration runtime — planning, execution, review, memory, and human approval in one control plane. |
 | 4 | [cl-agent](https://github.com/dattgoswami/cl-agent) | Python | Reusable CL substrate — captures episodes, replays experience, and distills reusable skills without fine-tuning. |
-| 3 | [ferrum-mcp](https://github.com/dattgoswami/ferrum-mcp) | Rust | Production MCP server — typed tool surface for coding, crypto, DeFi, wallet, and semantic memory search. |
+| 3 | [ferrum-mcp](https://github.com/dattgoswami/ferrum-mcp) | Rust | Coding-first MCP server — typed tool surface for agents, with optional crypto, DeFi, and memory tools. |
 | 3 | [taste-memory](https://github.com/dattgoswami/taste-memory) | Python | Preference and persona memory — user profiles, versioned prompt assets, episodic interaction memory for agents. |
 | 2 | [ferrum-memory](https://github.com/dattgoswami/ferrum-memory) | Python | Memory layer — working memory, hybrid retrieval, and prioritized experience replay buffer. |
 | 2 | [ferrum-evals](https://github.com/dattgoswami/ferrum-evals) | Python | Evaluation harness — correctness, safety, trajectory quality, BWT/FWT continual-learning metrics. |
@@ -65,7 +65,7 @@ A composable autonomous software engineering platform where coding agents act, r
  ||  Rust MCP       ||  ||  Python/FastAPI         ||  ||  Python/pytest   ||
  ||  server         ||  ||  + Qdrant :6333        ||  ||  + SQLite        ||
  ||                 ||  ||  + SQLite              ||  ||                  ||
- ||  coding/* (WIP) ||  ||  + Redis  :6379        ||  ||  Operational:    ||
+ ||  coding/*       ||  ||  + Redis  :6379        ||  ||  Operational:    ||
  ||   read_file     ||  ||                        ||  ||  -- ToolCorrect. ||
  ||   write_file    ||  ||  POST /experience       ||  ||  -- Trajectory   ||
  ||   apply_patch   ||  ||  GET  /replay          ||  ||     Score        ||
@@ -77,11 +77,11 @@ A composable autonomous software engineering platform where coding agents act, r
  ||   git_commit    ||  ||      primitive --       ||  ||  -- FWT          ||
  ||   git_status    ||  ||      without it, each  ||  ||  -- Plasticity   ||
  ||                 ||  ||      session starts    ||  ||     Index        ||
- ||  crypto/* (ok)  ||  ||      cold, no CL       ||  ||  -- Reward slope ||
+ ||  crypto/* (opt) ||  ||      cold, no CL       ||  ||  -- Reward slope ||
  ||   price         ||  ||                        ||  ||                  ||
  ||   position      ||  ||  data stores:          ||  ||  Without this,   ||
  ||                 ||  ||  Qdrant  (vectors)      ||  ||  "self-improving"||
- ||  defi/*   (ok)  ||  ||  SQLite  (episodes)    ||  ||  is a claim,     ||
+ ||  defi/*   (opt) ||  ||  SQLite  (episodes)    ||  ||  is a claim,     ||
  ||   yield         ||  ||  Redis   (sessions)    ||  ||  not a           ||
  ||   risk_score    ||  ||                        ||  ||  measurement     ||
  ||_________________||  ||________________________||  ||__________________||
@@ -153,21 +153,25 @@ A composable autonomous software engineering platform where coding agents act, r
 ||____________________________________________________________________________||
 ||                                                                            ||
 ||  ferrum-mcp       Rust                                                    ||
-||    typed MCP tool boundary -- the action space for all agents             ||
-||    transport: stdio (primary, Claude Desktop) + SSE / HTTP :3000         ||
+||    coding-first MCP tool boundary -- typed action space for agents       ||
+||    consumers: forge-agent, ferrum-agent, native MCP clients              ||
+||    transport: stdio primary + SSE / HTTP :3000                           ||
+||    REST aliases: /tools/{tool} for compatibility                         ||
 ||                                                                            ||
-||    coding domain  (WIP -- not yet documented in project README):         ||
+||    coding domain:                                                        ||
 ||      read_file   write_file   apply_patch   grep   glob                  ||
 ||      list_dir    write_test   run_tests     git_commit   git_status       ||
+||      run_tests returns structured results; calls carry tracing fields     ||
 ||                                                                            ||
-||    crypto domain (CoinGecko, Solana RPC):                                ||
-||      price   position                                                     ||
+||    safety/config:                                                         ||
+||      process env only; FERRUM_WORKSPACE_ROOTS guards file writes         ||
+||      stdio may default to cwd; HTTP requires explicit workspace roots     ||
 ||                                                                            ||
-||    defi domain (DeFiLlama):                                              ||
-||      yield   risk_score                                                  ||
+||    optional crypto/DeFi domains:                                          ||
+||      price   position   yield   risk_score                               ||
 ||                                                                            ||
-||    memory domain:                                                         ||
-||      search  (semantic search proxy to ferrum-memory)                    ||
+||    optional memory domain:                                                ||
+||      search  (proxy to ferrum-memory; no direct Qdrant dependency)       ||
 ||                                                                            ||
 ||  taste-memory     Python                                                  ||
 ||    human preference, versioned prompt assets, episodic interaction mem   ||
@@ -343,9 +347,9 @@ A composable autonomous software engineering platform where coding agents act, r
 ||  taste-memory       8001    REST/JSON + FastAPI    ferrum-agent planner   ||
 ||  ferrum-evals       8002    REST/JSON + OTLP       forge-agent             ||
 ||                                                    ferrum-agent reviewer   ||
-||  ferrum-mcp         3000    MCP stdio / SSE        forge-agent             ||
-||                                                    Claude Desktop          ||
-||                                                    any MCP client          ||
+||  ferrum-mcp         3000    MCP stdio/SSE/HTTP     forge-agent             ||
+||                                                    ferrum-agent            ||
+||                                                    native MCP clients      ||
 ||  ferrum-relay       3000    REST/JSON              Python agents           ||
 ||                                                    shell scripts           ||
 ||                                                    LLM tool wrappers       ||
@@ -362,4 +366,3 @@ A composable autonomous software engineering platform where coding agents act, r
 ||  Jaeger UI          16686   HTTP                   observability           ||
 ||____________________________________________________________________________||
 ```
-
