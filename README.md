@@ -14,12 +14,21 @@ A composable autonomous software engineering platform where coding agents act, r
 | 2 | [ferrum-memory](https://github.com/dattgoswami/ferrum-memory) | Python | Memory layer — working memory, hybrid retrieval, and prioritized experience replay buffer. |
 | 2 | [ferrum-evals](https://github.com/dattgoswami/ferrum-evals) | Python | Evaluation harness — correctness, safety, trajectory quality, BWT/FWT continual-learning metrics. |
 | 2 | [PersonalKB](https://github.com/dattgoswami/PersonalKB) | Python | Offline-first CLI RAG — grounded hybrid retrieval over personal technical libraries, zero API cost. |
+| 1 | [ferrum-gateway](https://github.com/dattgoswami/ferrum-gateway) | Rust | Standalone service gateway — generic HTTP routing, auth, limits, streaming, metrics; optional LLM/MCP/Ferrum adapters. |
 | 1 | [axon](https://github.com/dattgoswami/axon) | Rust | Local inference server — dynamic batching, SSE streaming, three-tier fallback, TurboQuant KV cache compression. |
 | 1 | [ferrum-relay](https://github.com/dattgoswami/ferrum-relay) | Rust | Async job relay — HTTP clients offload fetch/compute jobs, receive job IDs, poll for results. |
 | 1 | [tokengate](https://github.com/dattgoswami/tokengate) | Rust | Token metering layer — usage tracking, exact-decimal billing, chargeback analytics for LLM API calls. |
 | 0 | [ferrum-core](https://github.com/dattgoswami/ferrum-core) | Rust | Shared Rust primitives — error types, JSON logging, OpenTelemetry span export (crates.io v1.0.0). |
 | 0 | [forge-core](https://github.com/dattgoswami/forge-core) | Python | Framework-agnostic domain layer — tools, schemas, guardrails, Docker sandbox, eval harness wiring. |
 | 0 | [nova-api-openstack](https://github.com/dattgoswami/nova-api-openstack) | Python | OpenStack VM API proof of concept — state-machine lifecycle management, layered API design reference. |
+
+---
+
+## Gateway Fit
+
+- `ferrum-gateway` is not only an agent gateway; it can run standalone for normal Web2 HTTP routing, auth, rate limits, timeouts, retries, circuit breakers, streaming proxying, logs, tracing, and metrics.
+- In Ferrum Stack, it sits in Layer 1 in front of `axon`, external LLM APIs, `ferrum-mcp`, and ordinary HTTP upstreams.
+- Ferrum-specific behavior stays adapter-based: LLM fallback, token budgets, MCP policy, and `tokengate`-shaped usage events are optional, not core dependencies.
 
 ---
 
@@ -52,6 +61,7 @@ A composable autonomous software engineering platform where coding agents act, r
 ||  LLM routing:                                                              ||
 ||    FILE_OPS  --> axon  (local Rust/Candle inference, 80% of all calls)   ||
 ||    CODE_GEN  --> Anthropic API  (claude-sonnet-4-6, 20% of calls)        ||
+||    optional --> ferrum-gateway for fallback, budgets, metering, policy    ||
 ||____________________________________________________________________________||
           ||                         ||                         ||
           || MCP tool calls          || episode writes          || reward signal
@@ -224,6 +234,15 @@ A composable autonomous software engineering platform where coding agents act, r
 ||  LAYER 1 -- INFERENCE, EXECUTION, AND BILLING                            ||
 ||____________________________________________________________________________||
 ||                                                                            ||
+||  ferrum-gateway   Rust                                                    ||
+||    standalone service gateway, not only an agent gateway                  ||
+||    generic core: HTTP routing, auth, rate/body limits, timeouts           ||
+||    streaming proxying, retries, circuit breakers, metrics, logs, traces   ||
+||    optional agent adapters: LLM fallback, budgets, MCP policy, metering   ||
+||    Ferrum fit: fronts axon, external LLMs, ferrum-mcp, HTTP upstreams     ||
+||    dependency boundary: core has no LLM, MCP, or Ferrum dependency        ||
+||    :8080 data plane  /  :8081 admin plane                                 ||
+||                                                                            ||
 ||  axon              Rust                                                   ||
 ||    production async AI inference server (HuggingFace Candle)             ||
 ||    models: Llama, Mistral, SmolLM2                                       ||
@@ -340,6 +359,9 @@ A composable autonomous software engineering platform where coding agents act, r
  ______________________________________________________________________________
 ||  Service            Port    Protocol              Consumed by             ||
 ||____________________________________________________________________________||
+||  ferrum-gateway     8080    HTTP proxy/data       Web2 services, agents   ||
+||                     8081    admin/metrics         operators, monitoring   ||
+||                                                    fronts axon / MCP / LLM ||
 ||  axon               3000    HTTP /v1/generate      forge-agent (80% LLM)  ||
 ||  ferrum-memory      8000    REST/JSON + FastAPI    forge-agent             ||
 ||                                                    ferrum-agent            ||
