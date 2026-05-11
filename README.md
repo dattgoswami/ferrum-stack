@@ -15,6 +15,7 @@ A composable autonomous software engineering platform where coding agents act, r
 | 2 | [ferrum-evals](https://github.com/dattgoswami/ferrum-evals) | Python | Evaluation harness — correctness, safety, trajectory quality, BWT/FWT continual-learning metrics. |
 | 2 | [PersonalKB](https://github.com/dattgoswami/PersonalKB) | Python | Offline-first CLI RAG — grounded hybrid retrieval over personal technical libraries, zero API cost. |
 | 1 | [ferrum-gateway](https://github.com/dattgoswami/ferrum-gateway) | Rust | Standalone service gateway — generic HTTP routing, auth, limits, streaming, metrics; optional LLM/MCP/Ferrum adapters. |
+| 1 | [secure-agent-runner](https://github.com/dattgoswami/secure-agent-runner) | Rust | Standalone execution plane — policy-checked jobs, workspace snapshots, capped output/artifacts, replayable results. |
 | 1 | [axon](https://github.com/dattgoswami/axon) | Rust | Local inference server — dynamic batching, SSE streaming, three-tier fallback, TurboQuant KV cache compression. |
 | 1 | [ferrum-relay](https://github.com/dattgoswami/ferrum-relay) | Rust | Async job relay — HTTP clients offload fetch/compute jobs, receive job IDs, poll for results. |
 | 1 | [tokengate](https://github.com/dattgoswami/tokengate) | Rust | Token metering layer — usage tracking, exact-decimal billing, chargeback analytics for LLM API calls. |
@@ -29,6 +30,10 @@ A composable autonomous software engineering platform where coding agents act, r
 - `ferrum-gateway` is not only an agent gateway; it can run standalone for normal Web2 HTTP routing, auth, rate limits, timeouts, retries, circuit breakers, streaming proxying, logs, tracing, and metrics.
 - In Ferrum Stack, it sits in Layer 1 in front of `axon`, external LLM APIs, `ferrum-mcp`, and ordinary HTTP upstreams.
 - Ferrum-specific behavior stays adapter-based: LLM fallback, token budgets, MCP policy, and `tokengate`-shaped usage events are optional, not core dependencies.
+
+## Execution Plane Fit
+
+`secure-agent-runner` sits in Layer 1 behind agents, `ferrum-mcp`, and `ferrum-gateway` as the governed command execution plane. It records policy-checked tool/test jobs with snapshots, output/artifact caps, replay hashes, and local-now / Firecracker-planned backend boundaries.
 
 ---
 
@@ -62,6 +67,7 @@ A composable autonomous software engineering platform where coding agents act, r
 ||    FILE_OPS  --> axon  (local Rust/Candle inference, 80% of all calls)   ||
 ||    CODE_GEN  --> Anthropic API  (claude-sonnet-4-6, 20% of calls)        ||
 ||    optional --> ferrum-gateway for fallback, budgets, metering, policy    ||
+||    command runs --> secure-agent-runner for policy, snapshots, replay     ||
 ||____________________________________________________________________________||
           ||                         ||                         ||
           || MCP tool calls          || episode writes          || reward signal
@@ -84,6 +90,7 @@ A composable autonomous software engineering platform where coding agents act, r
  ||   list_dir      ||  ||                        ||  ||                  ||
  ||   write_test    ||  ||  <-- THE replay buffer ||  ||  CL Research:    ||
  ||   run_tests     ||  ||      is the research   ||  ||  -- BWT          ||
+ ||     -> runner   ||  ||                        ||  ||                  ||
  ||   git_commit    ||  ||      primitive --       ||  ||  -- FWT          ||
  ||   git_status    ||  ||      without it, each  ||  ||  -- Plasticity   ||
  ||                 ||  ||      session starts    ||  ||     Index        ||
@@ -172,6 +179,7 @@ A composable autonomous software engineering platform where coding agents act, r
 ||      read_file   write_file   apply_patch   grep   glob                  ||
 ||      list_dir    write_test   run_tests     git_commit   git_status       ||
 ||      run_tests returns structured results; calls carry tracing fields     ||
+||      execution handoff: sandbox/run --> secure-agent-runner               ||
 ||                                                                            ||
 ||    safety/config:                                                         ||
 ||      process env only; FERRUM_WORKSPACE_ROOTS guards file writes         ||
@@ -242,6 +250,14 @@ A composable autonomous software engineering platform where coding agents act, r
 ||    Ferrum fit: fronts axon, external LLMs, ferrum-mcp, HTTP upstreams     ||
 ||    dependency boundary: core has no LLM, MCP, or Ferrum dependency        ||
 ||    :8080 data plane  /  :8081 admin plane                                 ||
+||                                                                            ||
+||  secure-agent-runner  Rust                                                ||
+||    governed execution plane for agent, CI, MCP, and gateway jobs          ||
+||    RunJobRequest --> policy --> snapshot --> backend --> RunJobResult     ||
+||    local_process today; Firecracker design/skeleton for isolation         ||
+||    caps stdout/stderr/artifacts; stores request/result/snapshot/hashes    ||
+||    local is policy/replay only; Firecracker is the isolation target       ||
+||    :3000 HTTP API  /  agent-runner CLI                                    ||
 ||                                                                            ||
 ||  axon              Rust                                                   ||
 ||    production async AI inference server (HuggingFace Candle)             ||
@@ -319,6 +335,7 @@ A composable autonomous software engineering platform where coding agents act, r
 ||      ferrum-mcp/coding/write_file      --> write source                  ||
 ||      ferrum-mcp/coding/apply_patch     --> or apply a diff               ||
 ||      ferrum-mcp/coding/run_tests       --> evaluate, compute reward      ||
+||      secure-agent-runner               --> policy, snapshot, result hash  ||
 ||                          reward = 1.0 if all tests pass                  ||
 ||      ||                                                                    ||
 ||      V                                                                     ||
@@ -362,6 +379,8 @@ A composable autonomous software engineering platform where coding agents act, r
 ||  ferrum-gateway     8080    HTTP proxy/data       Web2 services, agents   ||
 ||                     8081    admin/metrics         operators, monitoring   ||
 ||                                                    fronts axon / MCP / LLM ||
+||  secure-agent-runner 3000   HTTP + CLI            ferrum-mcp sandbox/run  ||
+||                                                    gateway / agents / CI   ||
 ||  axon               3000    HTTP /v1/generate      forge-agent (80% LLM)  ||
 ||  ferrum-memory      8000    REST/JSON + FastAPI    forge-agent             ||
 ||                                                    ferrum-agent            ||
