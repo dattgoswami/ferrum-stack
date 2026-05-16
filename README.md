@@ -10,6 +10,7 @@ A composable autonomous software engineering platform where coding agents act, r
 | 4 | [ferrum-agent](https://github.com/dattgoswami/ferrum-agent) | Python | Multi-agent orchestration runtime — planning, execution, review, memory, and human approval in one control plane. |
 | 4 | [cl-agent](https://github.com/dattgoswami/cl-agent) | Python | Reusable CL substrate — captures episodes, replays experience, and distills reusable skills without fine-tuning. |
 | 3 | [ferrum-mcp](https://github.com/dattgoswami/ferrum-mcp) | Rust | Coding-first MCP server — typed tool surface for agents, with optional crypto, DeFi, and memory tools. |
+| 3 | [ap2-rust](https://github.com/dattgoswami/ap2-rust) | Rust | Agent-payments trust layer — AP2 mandates, SD-JWT chains, constraint verification, A2A helpers, CLI demos. |
 | 3 | [taste-memory](https://github.com/dattgoswami/taste-memory) | Python | Preference and persona memory — user profiles, versioned prompt assets, episodic interaction memory for agents. |
 | 2 | [ferrum-memory](https://github.com/dattgoswami/ferrum-memory) | Python | Memory layer — working memory, hybrid retrieval, and prioritized experience replay buffer. |
 | 2 | [ferrum-evals](https://github.com/dattgoswami/ferrum-evals) | Python | Evaluation harness — correctness, safety, trajectory quality, BWT/FWT continual-learning metrics. |
@@ -34,6 +35,10 @@ A composable autonomous software engineering platform where coding agents act, r
 ## Execution Plane Fit
 
 `secure-agent-runner` sits in Layer 1 behind agents, `ferrum-mcp`, and `ferrum-gateway` as the governed command execution plane. It records policy-checked tool/test jobs with snapshots, output/artifact caps, replay hashes, and local-now / Firecracker-planned backend boundaries.
+
+## AP2 Fit
+
+`ap2-rust` sits in Layer 3 as the agent-commerce trust layer. It gives Ferrum agents verifiable user intent, checkout, payment, and receipt chains through AP2 mandates, RFC 8785 canonical JSON, JOSE signing, SD-JWT / KB-JWT / dSD-JWT delegation, constraint verification, and A2A helpers.
 
 ---
 
